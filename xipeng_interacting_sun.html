@@ -1,0 +1,221 @@
+<meta name="robots" content="noindex">
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Moving Sun</title>
+</head>
+<body>
+<canvas id="canvas" width="640" 
+		height="480" style="border:1px solid #000;">
+  
+  
+<script id="jsbin-javascript">
+
+//A list of keys that are currently pressed down
+var keysdown = {};
+
+//Event listener for when the user presses a key
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  
+  keysdown[event.key] = true;
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
+// the last option dispatches the event to the listener first,
+// then dispatches event to window
+
+//Event listener for when the user releases a key
+window.addEventListener("keyup", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  
+  keysdown[event.key] = false;
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
+// the last option dispatches the event to the listener first,
+// then dispatches event to window
+
+window.onload = function() {
+  var canvas = document.getElementById("canvas");
+  var context = canvas.getContext("2d");
+  var n = 10;
+  var suns = [];
+
+  function Rectangle(width, height, distance, angle, fillColor) {
+    this.width = width;
+    this.height = height;
+    this.distance = distance;
+    this.angle = angle;
+    this.fillColor = fillColor;
+    this.angleSpeed = 0.05;
+  }
+
+  Rectangle.prototype.update = function() {
+    this.angle += this.angleSpeed;
+  };
+
+  Rectangle.prototype.draw = function(context) {
+    context.save();
+    context.rotate(this.angle);
+    context.translate(0, -this.distance);
+    context.fillStyle = this.fillColor;
+    context.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+    context.restore();
+  };
+
+  function Ball(x, y, radius, fillColor, strokeColor, velocity_x, velocity_y) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.fillColor = fillColor;
+    this.strokeColor = strokeColor;
+    this.velocity_x = velocity_x;
+    this.velocity_y = velocity_y;
+  }
+
+  Ball.prototype.update = function(canvasWidth, canvasHeight) {
+    this.x += this.velocity_x;
+    this.y += this.velocity_y;
+    if (this.x + this.radius > canvasWidth) {
+      this.x = canvasWidth - this.radius;
+      this.velocity_x = -this.velocity_x;
+    }
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.velocity_x = -this.velocity_x;
+    }
+    if (this.y + this.radius > canvasHeight) {
+      this.y = canvasHeight - this.radius;
+      this.velocity_y = -this.velocity_y;
+    }
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.velocity_y = -this.velocity_y;
+    }
+  };
+
+  Ball.prototype.draw = function(context) {
+    context.beginPath();
+    context.arc(0, 0, this.radius, 0, 2 * Math.PI, false);
+    context.fillStyle = this.fillColor;
+    context.fill();
+    context.lineWidth = 1;
+    context.strokeStyle = this.strokeColor;
+    context.stroke();
+  };
+
+  function Sun(x, y, radius, fillColor, strokeColor, velocity_x, velocity_y, numRectangles) {
+    this.ball = new Ball(x, y, radius, fillColor, strokeColor, velocity_x, velocity_y);
+    this.rectangles = [];
+    this.numRectangles = numRectangles || 5;
+    this.initRectangles();
+  }
+
+  Sun.prototype.initRectangles = function() {
+    var distance = this.ball.radius + 15;
+    var width = 6;
+    var height = 12;
+    var fillColor = this.ball.fillColor;
+    for (var i = 0; i < this.numRectangles; i++) {
+      var angle = (2 * Math.PI / this.numRectangles) * i;
+      var rectangle = new Rectangle(width, height, distance, angle, fillColor);
+      this.rectangles.push(rectangle);
+    }
+  };
+
+  Sun.prototype.update = function(canvasWidth, canvasHeight) {
+    this.ball.update(canvasWidth, canvasHeight);
+    for (var i = 0; i < this.rectangles.length; i++) {
+      this.rectangles[i].update();
+    }
+  };
+
+  Sun.prototype.draw = function(context) {
+    context.save();
+    context.translate(this.ball.x, this.ball.y);
+    this.ball.draw(context);
+    for (var i = 0; i < this.rectangles.length; i++) {
+      this.rectangles[i].draw(context);
+    }
+    context.restore();
+  };
+
+  function initSuns() {
+    for (var i = 0; i < n; i++) {
+      var sun = new Sun(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        10,
+        getRandomColor(),
+        "grey",
+        (Math.random() * 4) - 2,
+        (Math.random() * 4) - 2,
+        5
+      );
+      suns.push(sun);
+    }
+  }
+
+  function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var j = 0; j < 6; j++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+
+  initSuns();
+  requestAnimationFrame(mainLoop);
+
+  function mainLoop() {
+    processInput();
+    update();
+    draw();
+    requestAnimationFrame(mainLoop);
+  }
+
+  function processInput()
+  {
+    if(keysdown.ArrowUp) {
+      for (var i=0; i < suns.length; i++){
+        for (var j=0; j < suns[i].rectangles.length; j++){
+          ++suns[i].rectangles[j].angleSpeed;
+        }
+      }
+	}
+    
+    if(keysdown.ArrowDown) {
+      for (var i=0; i < suns.length; i++){
+        for (var j=0; j < suns[i].rectangles.length; j++){
+          --suns[i].rectangles[j].angleSpeed;
+        }
+      }
+	}
+  }
+  function update() {
+    for (var i = 0; i < suns.length; i++) {
+      suns[i].update(canvas.width, canvas.height);
+    }
+  }
+
+  function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.save();
+    for (var i = 0; i < suns.length; i++) {
+      suns[i].draw(context);
+    }
+    context.restore();
+  }
+}
+</script>
+</body>
+</html>
